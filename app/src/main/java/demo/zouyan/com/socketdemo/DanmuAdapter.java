@@ -1,12 +1,15 @@
 package demo.zouyan.com.socketdemo;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +55,10 @@ public class DanmuAdapter extends BaseAdapter {
         Map<String,Object> map = list.get(position);
         holder.tv_txt.setText((String) map.get("txt"));
         holder.tv_nn.setText((String) map.get("nn")+" : ");
+//        String nl = (String) map.get("nl");
+//        if(nl!=null&&Integer.parseInt(nl)>0){
+//            holder.ll_content.setBackgroundColor(getRandomColor());
+//        }
         if(position==list.size()-1){
             isRefresh = false;
         }
@@ -60,10 +67,11 @@ public class DanmuAdapter extends BaseAdapter {
     class ViewHolder{
         TextView tv_nn;
         TextView tv_txt;
-
+        LinearLayout ll_content;
         public ViewHolder(View itemView) {
             tv_nn = itemView.findViewById(R.id.tv_nn);
             tv_txt = itemView.findViewById(R.id.tv_txt);
+            ll_content = itemView.findViewById(R.id.ll_content);
         }
     }
 
@@ -75,5 +83,11 @@ public class DanmuAdapter extends BaseAdapter {
 
     public void chagreRefreshState() {
         isRefresh = !isRefresh;
+    }
+    private int getRandomColor() {
+        SecureRandom rgen = new SecureRandom();
+        return Color.HSVToColor(150, new float[]{
+                rgen.nextInt(359), 1, 1
+        });
     }
 }

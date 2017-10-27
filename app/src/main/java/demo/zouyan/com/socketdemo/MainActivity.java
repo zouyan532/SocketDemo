@@ -1,11 +1,21 @@
 package demo.zouyan.com.socketdemo;
 
+import android.app.Activity;
+import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.AbsListView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -34,18 +44,62 @@ public class MainActivity extends AppCompatActivity {
     //获取弹幕线程及心跳线程运行和停止标记
     private boolean readyFlag = false;
     private List<Map<String, Object>> list;
+    private LinearLayout ll_head;
+    private TextView tv_txt;
+    private TextView tv_nn;
+    boolean isShowing;//是否正在显示
+
     private DanmuAdapter adapter;
     private ListView lv_danmu;
-    private List<Map<String,Object>> saveList;
+    private List<Map<String, Object>> saveList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Window window = getWindow();
+            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            View statusBar = (View) findViewById(R.id.SysStatusBar);
+            ViewGroup.LayoutParams layoutParams = statusBar.getLayoutParams();
+            layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            layoutParams.height = getStatusHeight(this);
+            statusBar.setLayoutParams(layoutParams);
+        }
+
         lv_danmu = (ListView) findViewById(R.id.lv_danmu);
+        ll_head = (LinearLayout) findViewById(R.id.ll_head);
+        tv_nn = (TextView) findViewById(R.id.tv_nn);
+        tv_txt = (TextView)findViewById(R.id.tv_txt);
         list = new ArrayList<>();
         saveList = new ArrayList<>();
         adapter = new DanmuAdapter(list, this);
         lv_danmu.setAdapter(adapter);
+
+        lv_danmu.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+            }
+
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                if(list.size()==0){
+                    return;
+                }
+                Map<String,Object> map = list.get(firstVisibleItem);
+                String nl = (String) map.get("nl");
+                if(nl==null){
+                    return;
+                }
+                if(Integer.parseInt(nl)>0&&map.get("isshow")==null){
+                    if (!isShowing) {
+                        show(firstVisibleItem);
+                    }
+                }
+            }
+        });
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -62,8 +116,34 @@ public class MainActivity extends AppCompatActivity {
                 keepGetMsg.start();
             }
         }).start();
-
     }
+
+    //显示悬停布局
+    public void show(int position) {
+        isShowing = true;
+        //设置悬停布局，为了看起来是悬停效果，布局的内容要设置成与ItemView一致
+        Map<String, Object> map = list.get(position);
+        list.get(position).put("isshow",true);
+        tv_txt.setText((String) map.get("txt"));
+        tv_nn.setText(map.get("nn") + " : ");
+        //添加悬停布局
+        ll_head.setVisibility(View.VISIBLE);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                hide();
+            }
+        },10*1000);
+    }
+
+    //隐藏悬停布局
+    public void hide() {
+        if (ll_head != null) {
+            isShowing = false;
+            ll_head.setVisibility(View.GONE);
+        }
+    }
+
 
     class KeepAlive extends Thread {
         @Override
@@ -223,12 +303,9 @@ public class MainActivity extends AppCompatActivity {
             if (msg.get("type").equals("chatmsg")) {//弹幕消息
                 String info = msg.get("txt").toString();
                 Log.i("Info", "弹幕信息：" + info);
-                if(adapter.isRefresh()){
+                if (adapter.isRefresh()) {
                     saveList.add(msg);
-                }else{
-                    if(list.size()>30){
-                        list.clear();
-                    }
+                } else {
                     list.add(msg);
                     list.addAll(saveList);
                     saveList.clear();
@@ -238,14 +315,45 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private Handler handler = new Handler(){
+    private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            if(!adapter.isRefresh()){
+            if (!adapter.isRefresh()) {
                 adapter.chagreRefreshState();
                 adapter.notifyDataSetChanged();
             }
         }
     };
+
+    public static int getStatusHeight(Activity activity) {
+        int statusHeight = 0;
+        Rect localRect = new Rect();
+        activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(localRect);
+        statusHeight = localRect.top;
+        if (0 == statusHeight) {
+            Class<?> localClass;
+            try {
+                localClass = Class.forName("com.android.internal.R$dimen");
+                Object localObject = localClass.newInstance();
+                int i5 = Integer.parseInt(localClass.getField("status_bar_height").get(localObject).toString());
+                statusHeight = activity.getResources().getDimensionPixelSize(i5);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            }
+        }
+        return statusHeight;
+    }
 }
