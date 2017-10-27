@@ -8,13 +8,21 @@ android {
         minSdkVersion 19
         targetSdkVersion 26
         versionCode 1
-        versionName "1.0"
+        versionName "0.01"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            applicationVariants.all { variant ->
+                variant.outputs.each { output ->
+                    def outputFile = output.outputFile
+                    //这里修改文件名
+                    def fileName = "DamaoDanmu${defaultConfig.versionName}.apk"
+                    output.outputFile = new File(outputFile.parent, fileName)
+                }
+            }
         }
     }
 }
